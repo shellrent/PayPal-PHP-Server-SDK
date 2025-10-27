@@ -9,7 +9,7 @@ class JsonMapperWithResponseException extends JsonMapperException {
 	private $rawResponse;
 	
 	public static function create (  JsonMapperException $exception, $rawResponse ): self {
-		$self = new static( $exception->getMessage(), $exception->getCode(), $exception );
+		$self = new static( $exception->getMessage() .': '.$rawResponse, $exception->getCode(), $exception );
 		
 		$self->rawResponse = $rawResponse;
 		$self->jsonMapperException = $exception;
