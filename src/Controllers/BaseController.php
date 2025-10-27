@@ -10,10 +10,13 @@ declare(strict_types=1);
 
 namespace PaypalServerSdkLib\Controllers;
 
+use apimatic\jsonmapper\JsonMapperException;
 use Core\ApiCall;
 use Core\Client;
 use Core\Request\RequestBuilder;
+use Core\Response\Context;
 use Core\Response\ResponseHandler;
+use PaypalServerSdkLib\Exceptions\JsonMapperWithResponseException;
 
 /**
  * Base controller
@@ -34,10 +37,23 @@ class BaseController
 
     protected function execute(RequestBuilder $requestBuilder, ?ResponseHandler $responseHandler = null)
     {
-        return (new ApiCall($this->client))
-            ->requestBuilder($requestBuilder)
-            ->responseHandler($responseHandler ?? $this->responseHandler())
-            ->execute();
+		if( !$responseHandler ) {
+			$responseHandler = $this->responseHandler();
+		}
+		
+	    $request = $requestBuilder->build($this->client);
+	    $request->addAcceptHeader($responseHandler->getFormat());
+	    $this->client->beforeRequest($request);
+	    $response = $this->client->getHttpClient()->execute($request);
+	    $context = new Context($request, $response, $this->client);
+	    $this->client->afterResponse($context);
+		
+		try {
+		    return $responseHandler->getResult($context);
+			
+		} catch( JsonMapperException  $exception ) {
+			throw JsonMapperWithResponseException::create($exception, $response->getRawBody() );
+		}
     }
 
     protected function requestBuilder(string $requestMethod, string $path): RequestBuilder
